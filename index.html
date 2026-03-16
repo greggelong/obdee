@@ -1,119 +1,96 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>p5.js + ml5: Rear Camera Object Detection (Full Screen)</title>
-    <!-- p5.js and ml5.js from CDN -->
+    <title>p5.js + ml5: Rear Camera Object Detection (Debug View)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <script src="https://unpkg.com/ml5@1/dist/ml5.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;  /* prevent scrolling */
-            background-color: black;
-        }
-        canvas {
-            display: block;  /* remove extra spacing */
-        }
-        /* optional simple status overlay (fades after a few seconds) */
-        .info {
+        body { margin: 0; overflow: hidden; background: black; }
+        canvas { display: block; }
+        .status-panel {
             position: absolute;
             top: 20px;
             left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 16px;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border-left: 4px solid #0f0;
+            z-index: 100;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            max-width: 60%;
+        }
+        .status-panel.error {
+            border-left-color: #f00;
+            color: #fcc;
+        }
+        .status-panel.warn {
+            border-left-color: #ff0;
+            color: #ffc;
+        }
+        .counter {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
             color: white;
             font-family: monospace;
-            background: rgba(0,0,0,0.6);
-            padding: 8px 12px;
-            border-radius: 24px;
-            pointer-events: none;
-            z-index: 10;
-            font-size: 14px;
-            transition: opacity 2s;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 18px;
+            z-index: 100;
+            backdrop-filter: blur(2px);
         }
     </style>
 </head>
 <body>
-    <div class="info" id="statusMessage">📱 Initializing camera and model...</div>
+    <div class="status-panel" id="statusPanel">🚀 Initializing...</div>
+    <div class="counter" id="detectionCounter">Objects: 0</div>
 
     <script>
-        // --- main p5.js sketch (using async setup for ml5) ---
+        // --- p5 sketch with enhanced debugging ---
         let video;
         let detector;
         let detections = [];
-        let statusDiv;
-
-        // We'll store video dimensions after metadata loads
         let videoWidth = 0, videoHeight = 0;
+        let scale = 1, offsetX = 0, offsetY = 0;
+        let modelLoaded = false;
+        let detectionAttempts = 0;
+        let lastDetectionTime = 0;
+        let noDetectionMessage = '';
 
-        // For scaling the video to fit canvas without distortion
-        let scale = 1;
-        let offsetX = 0, offsetY = 0;
+        const statusEl = document.getElementById('statusPanel');
+        const counterEl = document.getElementById('detectionCounter');
 
-        // UI status update
-        function setStatus(msg, isError = false) {
-            if (statusDiv) {
-                statusDiv.textContent = msg;
-                statusDiv.style.backgroundColor = isError ? 'rgba(180, 0, 0, 0.8)' : 'rgba(0,0,0,0.6)';
-                // fade out after 3 seconds if not an error
-                if (!isError) {
-                    setTimeout(() => {
-                        statusDiv.style.opacity = '0';
-                    }, 3000);
-                } else {
-                    statusDiv.style.opacity = '1';
-                }
-            }
+        function setStatus(msg, type = 'info') {
+            statusEl.textContent = msg;
+            statusEl.className = 'status-panel ' + (type === 'error' ? 'error' : (type === 'warn' ? 'warn' : ''));
         }
 
-        // This function updates scaling and offsets based on current canvas and video size
-        function updateVideoMapping() {
-            if (videoWidth === 0 || videoHeight === 0 || width === 0 || height === 0) return;
-
-            // calculate scale to fit video inside canvas (preserve aspect ratio)
-            let scaleW = width / videoWidth;
-            let scaleH = height / videoHeight;
-            scale = Math.min(scaleW, scaleH);  // "contain" mode: video fits entirely, possible black bars
-
-            // center the video
-            offsetX = (width - videoWidth * scale) / 2;
-            offsetY = (height - videoHeight * scale) / 2;
-        }
-
-        // p5 setup (async to await model loading)
         async function setup() {
-            statusDiv = document.getElementById('statusMessage');
-
-            // create canvas filling the window
             createCanvas(windowWidth, windowHeight);
-            pixelDensity(1); // for performance and consistency across devices
+            pixelDensity(1);
 
-            // access rear camera with specific facingMode
+            // Request rear camera
             try {
                 video = createCapture({
-                    video: {
-                        facingMode: { exact: "environment" }  // request back camera
-                    },
+                    video: { facingMode: { exact: "environment" } },
                     audio: false
-                }, () => {
-                    setStatus('✅ Camera started');
-                });
+                }, () => setStatus('✅ Camera started (rear)', 'info'));
             } catch (err) {
-                // fallback if exact environment not available (some devices may not have back camera or constraints)
-                console.warn('Back camera not available, using default camera', err);
-                video = createCapture({
-                    video: true,
-                    audio: false
-                }, () => {
-                    setStatus('⚠️ Using default camera (back may not be available)');
-                });
+                console.warn('Rear camera not available, using default', err);
+                video = createCapture({ video: true, audio: false }, 
+                    () => setStatus('⚠️ Using default camera (rear may not exist)', 'warn'));
             }
+            video.hide();
 
-            video.hide();  // hide the extra HTML element, we'll draw it manually
-
-            // wait until video actually has metadata (width/height)
-            // p5's video.elt is the HTML element
+            // Wait for video metadata
             await new Promise((resolve) => {
                 if (video.elt.videoWidth > 0) {
                     videoWidth = video.elt.videoWidth;
@@ -128,100 +105,116 @@
                 }
             });
 
-            // also, p5's video.width/video.height might be set after, but we use raw video.elt dimensions
-            // ensure we have correct dimensions
-            videoWidth = video.elt.videoWidth;
-            videoHeight = video.elt.videoHeight;
-            setStatus(`📷 Camera resolution: ${videoWidth}x${videoHeight}`);
-
-            // update mapping now that we have video size
+            setStatus(`📷 Camera: ${videoWidth}x${videoHeight}`, 'info');
             updateVideoMapping();
 
-            // load ml5 object detection model (CocoSsd)
+            // Load model
             try {
+                setStatus('🤖 Loading model (cocossd)...', 'info');
                 detector = await ml5.objectDetection('cocossd');
-                setStatus('🤖 Model loaded, detecting...');
+                modelLoaded = true;
+                setStatus('🤖 Model ready – detecting', 'info');
             } catch (modelErr) {
-                setStatus('❌ Failed to load model', true);
-                console.error('Model loading error:', modelErr);
+                setStatus('❌ Model failed to load', 'error');
+                console.error('Model error:', modelErr);
                 return;
             }
 
-            // start continuous detection
+            // Start continuous detection
             if (detector) {
                 detector.detectStart(video, gotDetections);
             }
         }
 
-        // p5 draw loop
+        function updateVideoMapping() {
+            if (videoWidth === 0 || videoHeight === 0 || width === 0 || height === 0) return;
+            let scaleW = width / videoWidth;
+            let scaleH = height / videoHeight;
+            scale = Math.min(scaleW, scaleH);
+            offsetX = (width - videoWidth * scale) / 2;
+            offsetY = (height - videoHeight * scale) / 2;
+        }
+
         function draw() {
-            background(0); // fill with black for letterboxing
+            background(0);
 
-            // if video is ready and has dimensions, draw it
-            if (video && videoWidth > 0 && videoHeight > 0) {
-                // update mapping in case canvas size changed (e.g., resize)
-                updateVideoMapping();
-
-                // draw the video frame scaled to fit while preserving aspect ratio
+            // Draw video if ready
+            if (video && videoWidth > 0) {
+                updateVideoMapping();  // handles window resize
                 image(video, offsetX, offsetY, videoWidth * scale, videoHeight * scale);
 
-                // draw detections (if any) with correct scaling
+                // Draw detections
                 push();
-                stroke(0, 255, 0);
                 strokeWeight(3);
-                noFill();
                 textSize(18);
                 textFont('monospace');
-                fill(255);
-                for (let detection of detections) {
-                    // detection coordinates (x, y, width, height) are in the original video frame dimensions
-                    // map them to canvas using the same scale and offset
-                    let dx = detection.x * scale + offsetX;
-                    let dy = detection.y * scale + offsetY;
-                    let dw = detection.width * scale;
-                    let dh = detection.height * scale;
+                for (let d of detections) {
+                    let dx = d.x * scale + offsetX;
+                    let dy = d.y * scale + offsetY;
+                    let dw = d.width * scale;
+                    let dh = d.height * scale;
 
-                    // draw bounding box
+                    // bounding box
+                    stroke(0, 255, 0);
+                    noFill();
                     rect(dx, dy, dw, dh);
 
-                    // draw label background
-                    let label = `${detection.label} ${Math.round(detection.confidence * 100)}%`;
+                    // label background
+                    let label = `${d.label} ${Math.round(d.confidence * 100)}%`;
                     textSize(18);
-                    let tw = textWidth(label);
+                    let tw = textWidth(label) + 10;
                     fill(0, 255, 0);
-                    rect(dx, dy - 20, tw + 10, 22);
+                    rect(dx, dy - 24, tw, 22);
                     fill(0);
-                    text(label, dx + 5, dy - 4);
+                    text(label, dx + 5, dy - 8);
                 }
                 pop();
+
+                // Update counter and show if no objects
+                counterEl.textContent = `Objects: ${detections.length}`;
+                if (detections.length === 0 && modelLoaded && millis() > 3000) {
+                    if (frameCount % 30 === 0) { // every ~0.5 sec
+                        noDetectionMessage = '🔍 No objects yet – try pointing at a person, book, or bottle';
+                    }
+                    fill(255, 200, 0);
+                    noStroke();
+                    textAlign(CENTER);
+                    textSize(20);
+                    text(noDetectionMessage, width/2, height - 50);
+                } else {
+                    noDetectionMessage = '';
+                }
             } else {
-                // loading state
+                // Waiting for camera
                 fill(255);
                 noStroke();
                 textAlign(CENTER, CENTER);
-                text('Waiting for camera...', width/2, height/2);
+                text('⏳ Starting camera...', width/2, height/2);
             }
         }
 
-        // callback for detection results
         function gotDetections(results) {
             detections = results;
-            // optional: console.log first detection for debugging
-            // if (results.length > 0) console.log(results[0]);
+            lastDetectionTime = millis();
+
+            // Log to console for debugging (limit to avoid spam)
+            if (results.length > 0) {
+                console.log('Detected:', results.map(d => `${d.label} (${Math.round(d.confidence*100)}%)`));
+            } else {
+                // optionally log every 30 frames that no detections
+                if (frameCount % 60 === 0) console.log('No objects in this frame');
+            }
         }
 
-        // handle window resize to keep canvas full screen
         function windowResized() {
             resizeCanvas(windowWidth, windowHeight);
-            // mapping will update in next draw()
         }
 
-        // pjs 5 (global mode) functions: setup, draw, windowResized
         window.setup = setup;
         window.draw = draw;
         window.windowResized = windowResized;
 
-        // optional: handle touch events to prevent default zoom (keeps canvas stable)
+        // Prevent pinch zoom
         window.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
         window.addEventListener('gesturestart', e => e.preventDefault());
     </script>
