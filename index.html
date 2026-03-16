@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>p5.js + ml5: Rear Camera Object Detection (Full Screen)</title>
+    <!-- p5.js and ml5.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@1/dist/ml5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;  /* prevent scrolling */
+            background-color: black;
+        }
+        canvas {
+            display: block;  /* remove extra spacing */
+        }
+        /* optional simple status overlay (fades after a few seconds) */
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: monospace;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 12px;
+            border-radius: 24px;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 14px;
+            transition: opacity 2s;
+        }
+    </style>
+</head>
+<body>
+    <div class="info" id="statusMessage">📱 Initializing camera and model...</div>
+
+    <script>
+        // --- main p5.js sketch (using async setup for ml5) ---
+        let video;
+        let detector;
+        let detections = [];
+        let statusDiv;
+
+        // We'll store video dimensions after metadata loads
+        let videoWidth = 0, videoHeight = 0;
+
+        // For scaling the video to fit canvas without distortion
+        let scale = 1;
+        let offsetX = 0, offsetY = 0;
+
+        // UI status update
+        function setStatus(msg, isError = false) {
+            if (statusDiv) {
+                statusDiv.textContent = msg;
+                statusDiv.style.backgroundColor = isError ? 'rgba(180, 0, 0, 0.8)' : 'rgba(0,0,0,0.6)';
+                // fade out after 3 seconds if not an error
+                if (!isError) {
+                    setTimeout(() => {
+                        statusDiv.style.opacity = '0';
+                    }, 3000);
+                } else {
+                    statusDiv.style.opacity = '1';
+                }
+            }
+        }
+
+        // This function updates scaling and offsets based on current canvas and video size
+        function updateVideoMapping() {
+            if (videoWidth === 0 || videoHeight === 0 || width === 0 || height === 0) return;
+
+            // calculate scale to fit video inside canvas (preserve aspect ratio)
+            let scaleW = width / videoWidth;
+            let scaleH = height / videoHeight;
+            scale = Math.min(scaleW, scaleH);  // "contain" mode: video fits entirely, possible black bars
+
+            // center the video
+            offsetX = (width - videoWidth * scale) / 2;
+            offsetY = (height - videoHeight * scale) / 2;
+        }
+
+        // p5 setup (async to await model loading)
+        async function setup() {
+            statusDiv = document.getElementById('statusMessage');
+
+            // create canvas filling the window
+            createCanvas(windowWidth, windowHeight);
+            pixelDensity(1); // for performance and consistency across devices
+
+            // access rear camera with specific facingMode
+            try {
+                video = createCapture({
+                    video: {
+                        facingMode: { exact: "environment" }  // request back camera
+                    },
+                    audio: false
+                }, () => {
+                    setStatus('✅ Camera started');
+                });
+            } catch (err) {
+                // fallback if exact environment not available (some devices may not have back camera or constraints)
+                console.warn('Back camera not available, using default camera', err);
+                video = createCapture({
+                    video: true,
+                    audio: false
+                }, () => {
+                    setStatus('⚠️ Using default camera (back may not be available)');
+                });
+            }
+
+            video.hide();  // hide the extra HTML element, we'll draw it manually
+
+            // wait until video actually has metadata (width/height)
+            // p5's video.elt is the HTML element
+            await new Promise((resolve) => {
+                if (video.elt.videoWidth > 0) {
+                    videoWidth = video.elt.videoWidth;
+                    videoHeight = video.elt.videoHeight;
+                    resolve();
+                } else {
+                    video.elt.addEventListener('loadedmetadata', () => {
+                        videoWidth = video.elt.videoWidth;
+                        videoHeight = video.elt.videoHeight;
+                        resolve();
+                    });
+                }
+            });
+
+            // also, p5's video.width/video.height might be set after, but we use raw video.elt dimensions
+            // ensure we have correct dimensions
+            videoWidth = video.elt.videoWidth;
+            videoHeight = video.elt.videoHeight;
+            setStatus(`📷 Camera resolution: ${videoWidth}x${videoHeight}`);
+
+            // update mapping now that we have video size
+            updateVideoMapping();
+
+            // load ml5 object detection model (CocoSsd)
+            try {
+                detector = await ml5.objectDetection('cocossd');
+                setStatus('🤖 Model loaded, detecting...');
+            } catch (modelErr) {
+                setStatus('❌ Failed to load model', true);
+                console.error('Model loading error:', modelErr);
+                return;
+            }
+
+            // start continuous detection
+            if (detector) {
+                detector.detectStart(video, gotDetections);
+            }
+        }
+
+        // p5 draw loop
+        function draw() {
+            background(0); // fill with black for letterboxing
+
+            // if video is ready and has dimensions, draw it
+            if (video && videoWidth > 0 && videoHeight > 0) {
+                // update mapping in case canvas size changed (e.g., resize)
+                updateVideoMapping();
+
+                // draw the video frame scaled to fit while preserving aspect ratio
+                image(video, offsetX, offsetY, videoWidth * scale, videoHeight * scale);
+
+                // draw detections (if any) with correct scaling
+                push();
+                stroke(0, 255, 0);
+                strokeWeight(3);
+                noFill();
+                textSize(18);
+                textFont('monospace');
+                fill(255);
+                for (let detection of detections) {
+                    // detection coordinates (x, y, width, height) are in the original video frame dimensions
+                    // map them to canvas using the same scale and offset
+                    let dx = detection.x * scale + offsetX;
+                    let dy = detection.y * scale + offsetY;
+                    let dw = detection.width * scale;
+                    let dh = detection.height * scale;
+
+                    // draw bounding box
+                    rect(dx, dy, dw, dh);
+
+                    // draw label background
+                    let label = `${detection.label} ${Math.round(detection.confidence * 100)}%`;
+                    textSize(18);
+                    let tw = textWidth(label);
+                    fill(0, 255, 0);
+                    rect(dx, dy - 20, tw + 10, 22);
+                    fill(0);
+                    text(label, dx + 5, dy - 4);
+                }
+                pop();
+            } else {
+                // loading state
+                fill(255);
+                noStroke();
+                textAlign(CENTER, CENTER);
+                text('Waiting for camera...', width/2, height/2);
+            }
+        }
+
+        // callback for detection results
+        function gotDetections(results) {
+            detections = results;
+            // optional: console.log first detection for debugging
+            // if (results.length > 0) console.log(results[0]);
+        }
+
+        // handle window resize to keep canvas full screen
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            // mapping will update in next draw()
+        }
+
+        // pjs 5 (global mode) functions: setup, draw, windowResized
+        window.setup = setup;
+        window.draw = draw;
+        window.windowResized = windowResized;
+
+        // optional: handle touch events to prevent default zoom (keeps canvas stable)
+        window.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+        window.addEventListener('gesturestart', e => e.preventDefault());
+    </script>
+</body>
+</html>
