@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>ml5.js objectDetection Example - Webcam with Camera Switch</title>
+    <title>THE AI BOSS · ART WORKER SURVEILLANCE</title>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.7/lib/p5.js"></script>
     <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
     <style>
@@ -14,7 +14,7 @@
             padding: 0;
             overflow: hidden;
             background: black;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Courier New', monospace;
         }
 
         canvas {
@@ -25,114 +25,182 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #0f0;
-            font-family: monospace;
-            font-size: 14px;
-            padding: 12px 20px;
-            border-radius: 30px;
-            border-left: 4px solid #0f0;
+            background: rgba(0, 0, 0, 0.8);
+            color: #aaa;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            padding: 12px 24px;
+            border-radius: 4px;
+            border-left: 6px solid #ff3333;
             z-index: 100;
             backdrop-filter: blur(4px);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 50, 50, 0.3);
+            letter-spacing: 1px;
+            text-transform: uppercase;
             pointer-events: none;
         }
 
-        .status-panel.error {
-            border-left-color: #f00;
-            color: #fcc;
-        }
-
-        .status-panel.warn {
-            border-left-color: #ff0;
-            color: #ffc;
+        .status-panel span {
+            color: #ff5555;
+            font-weight: bold;
+            animation: flicker 2s infinite;
         }
 
         .counter {
             position: absolute;
             bottom: 30px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffaa00;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 18px;
             z-index: 100;
+            border-left: 4px solid #ffaa00;
+            font-family: 'Courier New', monospace;
             backdrop-filter: blur(2px);
             pointer-events: none;
+            text-transform: uppercase;
         }
 
         .camera-btn {
             position: absolute;
             bottom: 30px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            border-radius: 50px;
-            padding: 14px 24px;
+            background: rgba(20, 20, 20, 0.9);
+            border: 2px solid #666;
+            border-radius: 4px;
+            padding: 12px 24px;
             font-size: 16px;
             font-weight: 600;
-            color: #333;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            color: #eee;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
             z-index: 200;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             transition: all 0.2s;
-            border: 2px solid rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(4px);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
         }
 
         .camera-btn:hover {
-            background: white;
-            transform: scale(1.02);
-        }
-
-        .camera-btn:active {
-            transform: scale(0.98);
+            background: #333;
+            border-color: #ff5555;
+            color: white;
+            box-shadow: 0 0 25px red;
         }
 
         .camera-btn svg {
             width: 20px;
             height: 20px;
-            fill: #333;
+            fill: #eee;
         }
 
-        .debug-hint {
+        .title-overlay {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            color: #aaa;
-            font-size: 12px;
-            padding: 6px 12px;
-            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #ff3333;
+            font-size: 28px;
+            padding: 8px 28px;
+            border-radius: 4px;
             z-index: 100;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            border: 2px solid #a00;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+            text-shadow: 0 0 8px crimson;
             pointer-events: none;
+            animation: glowPulse 3s infinite;
+        }
+
+        .subtitle {
+            position: absolute;
+            bottom: 90px;
+            right: 30px;
+            color: #aaa;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 4px 12px;
+            z-index: 100;
+            font-family: 'Courier New', monospace;
+        }
+
+        @keyframes glowPulse {
+            0% {
+                border-color: #a00;
+                text-shadow: 0 0 5px red;
+            }
+
+            50% {
+                border-color: #f33;
+                text-shadow: 0 0 20px #ff6666;
+            }
+
+            100% {
+                border-color: #a00;
+                text-shadow: 0 0 5px red;
+            }
+        }
+
+        @keyframes flicker {
+            0% {
+                opacity: 1;
+            }
+
+            41% {
+                opacity: 1;
+            }
+
+            42% {
+                opacity: 0.8;
+            }
+
+            43% {
+                opacity: 1;
+            }
+
+            45% {
+                opacity: 0.3;
+            }
+
+            46% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
     </style>
 </head>
 
 <body>
     <main>
-        <div class="status-panel" id="statusPanel">🚀 Initializing...</div>
-        <div class="counter" id="detectionCounter">Objects: 0</div>
-        <div class="debug-hint" id="facingHint">📸 Camera: unknown</div>
+        <div class="status-panel" id="statusPanel">📹 <span>SYSTEM</span> : INITIALIZING SURVEILLANCE...</div>
+        <div class="title-overlay">⚠️ THE AI BOSS IS WATCHING</div>
+        <div class="counter" id="detectionCounter">ART MATERIAL COUNT: 0</div>
+        <div class="subtitle" id="facingHint">📽️ FEED: REAR</div>
         <button class="camera-btn" id="switchCameraBtn">
             <svg viewBox="0 0 24 24">
                 <path
                     d="M20 5h-2.17L15 2H9L6.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 14H4V7h4.05l1.83-2h4.24L16 7h4v12zM12 9c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z" />
             </svg>
-            Switch Camera
+            SWITCH LENS
         </button>
     </main>
 
     <script>
-        // --- sketch.js content (embedded) ---
-        // Based on ml5.js objectDetection webcam example with camera switching
+        // ---- artistic surveillance object detector ----
+        // "the AI boss is watching" – grayscale feed (but COLORFUL bounding boxes!)
+        // person → "ART WORKER" (red box)
+        // everything else → "ART MATERIAL" + original label (different colors per class)
 
-        // Global variables
         let video;
         let detector;
         let detections = [];
@@ -146,168 +214,180 @@
         const switchBtn = document.getElementById('switchCameraBtn');
 
         // Camera state
-        let currentFacingMode = 'environment'; // 'environment' or 'user'
+        let currentFacingMode = 'environment';
         let isSwitchingCamera = false;
 
-        // Helper function to update status
+        // Color map for non-person objects (ART MATERIAL) - vibrant colors!
+        const materialColors = {
+            'bottle': [255, 215, 0],      // gold
+            'cup': [0, 255, 255],         // cyan
+            'book': [180, 100, 255],      // purple
+            'cell phone': [255, 140, 0],  // orange
+            'tvmonitor': [100, 200, 255], // light blue
+            'laptop': [255, 255, 0],      // yellow
+            'mouse': [200, 200, 200],     // silver
+            'keyboard': [150, 255, 150],  // mint
+            'remote': [255, 100, 100],    // coral
+            'default': [200, 200, 255]    // light purple fallback
+        };
+
         function setStatus(msg, type = 'info') {
-            statusEl.textContent = msg;
-            statusEl.className = 'status-panel ' + (type === 'error' ? 'error' : (type === 'warn' ? 'warn' : ''));
+            statusEl.innerHTML = `📹 <span>SYSTEM</span> : ${msg}`;
         }
 
-        // Update camera facing hint
         function updateFacingHint() {
-            facingHint.textContent = `📸 Camera: ${currentFacingMode === 'environment' ? 'Rear (environment)' : 'Front (user)'}`;
+            facingHint.textContent = `📽️ FEED: ${currentFacingMode === 'environment' ? 'REAR (SURVEILLANCE)' : 'FRONT (SELF-INSPECT)'}`;
         }
 
-        // Initialize camera with specific facing mode
         function initCamera(facingMode, callback) {
-            setStatus(`📷 Requesting ${facingMode} camera...`, 'info');
+            setStatus(`REQUESTING ${facingMode} LENS...`, 'info');
 
-            // Stop previous video if exists
             if (video) {
                 video.stop();
                 video.remove();
                 video = null;
             }
 
-            // Create new video capture with constraints
             let constraints = {
                 video: {
                     facingMode: facingMode,
-                    // Lower resolution = faster processing
-                    width: { ideal: 480 },     // Was likely 1280+ before
-                    height: { ideal: 360 },     // 480x360 is much lighter
-                    // Limit frame rate to reduce processing load
-                    frameRate: { ideal: 15 }    // Was 30/60fps before
+                    width: { ideal: 480 },
+                    height: { ideal: 360 },
+                    frameRate: { ideal: 15 }
                 },
                 audio: false
             };
 
-            video = createCapture(constraints, function () {
-                // Success callback
+            video = createCapture(constraints, () => {
                 videoReady = true;
-                setStatus(`✅ ${facingMode} camera started`, 'info');
+                setStatus(`${facingMode} FEED ACTIVE`, 'info');
                 updateFacingHint();
-
-                // Hide the HTML element
                 video.hide();
 
-                // Get video dimensions after metadata loads
                 if (video.elt.videoWidth > 0) {
-                    // Already have dimensions
                     if (callback) callback();
                 } else {
-                    // Wait for metadata
-                    video.elt.addEventListener('loadedmetadata', function () {
-                        if (callback) callback();
-                    });
+                    video.elt.addEventListener('loadedmetadata', callback);
                 }
             });
 
-            // Error handling
-            video.elt.onerror = function (err) {
-                setStatus(`❌ Camera error: ${err.message || 'unknown'}`, 'error');
-                console.error('Camera error:', err);
+            video.elt.onerror = (err) => {
+                setStatus(`CAMERA ERROR: ${err.message || 'unknown'}`, 'error');
             };
         }
 
-        // p5.js setup function
-        async function setup() {
+        function setup() {
             createCanvas(windowWidth, windowHeight);
             pixelDensity(1);
 
-            // Set up switch button
-            switchBtn.addEventListener('click', function () {
+            switchBtn.addEventListener('click', () => {
                 if (isSwitchingCamera) return;
-
                 isSwitchingCamera = true;
                 const newMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                setStatus(`SWITCHING TO ${newMode} ...`, 'info');
 
-                setStatus(`🔄 Switching to ${newMode} camera...`, 'info');
+                if (detector && detector.detectStop) detector.detectStop();
 
-                // Stop detection while switching
-                if (detector && detector.detectStop) {
-                    detector.detectStop();
-                }
-
-                // Reinitialize camera
-                initCamera(newMode, function () {
+                initCamera(newMode, () => {
                     currentFacingMode = newMode;
-
-                    // Restart detection
                     if (detector && modelReady) {
                         detector.detectStart(video, gotDetections);
-                        setStatus(`✅ Detection running with ${newMode} camera`, 'info');
+                        setStatus(`DETECTION ACTIVE · ${newMode}`, 'info');
                     }
-
                     isSwitchingCamera = false;
                 });
             });
 
-            // Start with environment camera (rear)
-            initCamera('environment', function () {
-                // Camera is ready, now load model
-                setStatus('📦 Loading model...', 'info');
-
-                // Load the model
+            initCamera('environment', () => {
+                setStatus('LOADING COCO-SSD MODEL (ARTIFICIAL INTELLIGENCE)', 'info');
                 detector = ml5.objectDetection('cocossd', modelLoaded);
             });
 
             updateFacingHint();
         }
 
-        // Callback when model is loaded
         function modelLoaded() {
             modelReady = true;
-            setStatus('✅ Model loaded, starting detection...', 'info');
-
-            // Start detection
+            setStatus('MODEL READY · SURVEILLANCE ONLINE', 'info');
             if (detector && video) {
                 detector.detectStart(video, gotDetections);
             }
         }
 
-        // p5.js draw function
         function draw() {
             background(0);
 
-            // Draw video if ready
             if (video && videoReady && video.elt.videoWidth > 0) {
-                // Calculate scaling to fit canvas while preserving aspect ratio
                 let videoAspect = video.elt.videoWidth / video.elt.videoHeight;
                 let canvasAspect = width / height;
-
                 let drawWidth, drawHeight, offsetX, offsetY;
 
                 if (videoAspect > canvasAspect) {
-                    // Video is wider than canvas - fit to width
                     drawWidth = width;
                     drawHeight = width / videoAspect;
                     offsetX = 0;
                     offsetY = (height - drawHeight) / 2;
                 } else {
-                    // Video is taller than canvas - fit to height
                     drawHeight = height;
                     drawWidth = height * videoAspect;
                     offsetX = (width - drawWidth) / 2;
                     offsetY = 0;
                 }
 
-                // Draw video
+                // --- Draw video in GRAYSCALE without affecting other drawings ---
+                push();
+                // Draw the video frame
                 image(video, offsetX, offsetY, drawWidth, drawHeight);
 
-                // Update counter
-                counterEl.textContent = `Objects: ${detections.length}`;
+                // Apply grayscale filter to the video portion using blending mode magic
+                // We'll use a semi-transparent white layer with blending to desaturate
+                // This method preserves colors drawn after it
+                push();
+                noStroke();
+                fill(255, 255, 255, 0); // transparent - we'll use a different approach
 
-                // Draw detections
+                // Better approach: draw a desaturating overlay
+                // But to keep it simple and effective, let's use filter(GRAY) but save the state
+                // Actually filter affects entire canvas, so we need to isolate the video
+
+                // Solution: Use drawing context to apply filter only to the video region
+                // by using a graphics buffer or by manipulating pixels
+
+                // For simplicity and performance, we'll use the filter(GRAY) approach
+                // BUT we'll save the canvas state, apply filter, then restore before drawing boxes
+                // Wait - that doesn't work because filter affects everything already drawn
+
+                // NEW APPROACH: Draw video, then apply grayscale filter, then immediately
+                // redraw the bounding boxes on top (they will be in color because drawn after filter)
+
+                // So the sequence is:
+                // 1. Draw video
+                // 2. Apply GRAY filter to entire canvas (video becomes grayscale)
+                // 3. Draw colorful bounding boxes on top (they will be in full color)
+
+                // That's the trick! The filter affects everything currently on canvas,
+                // but anything drawn AFTER the filter will be in full color.
+
+                // So let's implement that:
+
+                // Step 1: Video already drawn above (image command)
+
+                // Step 2: Apply GRAY filter (affects video only, since nothing else drawn yet)
+                filter(GRAY);
+
+                // Step 3: Now draw colorful bounding boxes on top (they will NOT be grayscale)
+
+                // Update counter
+                counterEl.textContent = `ART MATERIAL COUNT: ${detections.length}`;
+
+                // Draw colorful detections
                 push();
                 strokeWeight(3);
-                textSize(16);
-                textFont('monospace');
+                textSize(18);
+                textFont('Courier New');
+                textStyle(BOLD);
 
                 for (let d of detections) {
-                    // Scale detection coordinates to match video position
                     let x = d.x / video.elt.videoWidth;
                     let y = d.y / video.elt.videoHeight;
                     let w = d.width / video.elt.videoWidth;
@@ -318,74 +398,94 @@
                     let dw = w * drawWidth;
                     let dh = h * drawHeight;
 
-                    // Draw bounding box
-                    stroke(0, 255, 0);
+                    let label = d.label;
+                    let confidence = Math.round(d.confidence * 100);
+                    let displayLabel = '';
+                    let boxColor;
+
+                    // ARTISTIC RULES
+                    if (label === 'person') {
+                        displayLabel = `👤 ART WORKER ${confidence}%`;
+                        boxColor = [255, 40, 40]; // bright red
+                    } else {
+                        displayLabel = `📦 ART MATERIAL (${label}) ${confidence}%`;
+                        boxColor = materialColors[label] || [180, 180, 255]; // colorful!
+                    }
+
+                    // Draw bounding box (full color)
+                    stroke(boxColor[0], boxColor[1], boxColor[2]);
+                    strokeWeight(4);
                     noFill();
                     rect(dx, dy, dw, dh);
 
-                    // Draw label with confidence
-                    let label = `${d.label} ${Math.round(d.confidence * 100)}%`;
-                    textSize(16);
-                    let tw = textWidth(label) + 10;
-
-                    fill(0, 255, 0);
-                    rect(dx, dy - 22, tw, 20);
-
-                    fill(0);
-                    text(label, dx + 5, dy - 8);
-                }
-                pop();
-
-                // Show hint if no detections and model is ready
-                if (detections.length === 0 && modelReady) {
+                    // Draw label background
                     push();
-                    fill(255, 200, 0);
+                    textSize(16);
+                    let tw = textWidth(displayLabel) + 14;
+                    fill(boxColor[0], boxColor[1], boxColor[2], 230);
                     noStroke();
-                    textAlign(CENTER);
-                    textSize(18);
-                    text('👆 Point at objects (person, book, bottle, etc.)', width / 2, height - 70);
+                    rect(dx, dy - 28, tw, 26, 4);
+
+                    // text color for contrast
+                    let textCol = (boxColor[0] + boxColor[1] + boxColor[2] > 400) ? 0 : 255;
+                    fill(textCol);
+                    text(displayLabel, dx + 6, dy - 10);
                     pop();
                 }
+                pop();
+
+                // Add some surveillance scan lines (these will also be in color but that's fine)
+                if (random() < 0.05) {
+                    push();
+                    stroke(255, 255, 255, 40);
+                    strokeWeight(2);
+                    let lineY = random(height);
+                    line(0, lineY, width, lineY);
+                    pop();
+                }
+
+                // Hint text
+                if (detections.length === 0 && modelReady) {
+                    push();
+                    fill(180, 180, 180, 200);
+                    noStroke();
+                    textAlign(CENTER);
+                    textSize(22);
+                    textFont('Courier New');
+                    text('🔍 SCANNING FOR ART WORKERS & MATERIALS...', width / 2, height - 50);
+                    pop();
+                }
+                pop(); // close the push from video drawing
             } else {
-                // Loading state
+                // loading screen
                 push();
-                fill(255);
+                fill(200, 200, 200);
                 noStroke();
                 textAlign(CENTER, CENTER);
-                textSize(20);
-
-                if (!videoReady) {
-                    text('⏳ Requesting camera access...', width / 2, height / 2);
-                } else if (!modelReady) {
-                    text('⏳ Loading AI model (cocossd)...', width / 2, height / 2);
-                } else {
-                    text('⏳ Initializing...', width / 2, height / 2);
-                }
+                textSize(22);
+                textFont('Courier New');
+                if (!videoReady) text('⏳ ACCESSING SURVEILLANCE FEED', width / 2, height / 2);
+                else if (!modelReady) text('⏳ AWAKENING AI BOSS...', width / 2, height / 2);
+                else text('⏳ INITIALIZING', width / 2, height / 2);
                 pop();
             }
         }
 
-        // Callback for detection results
         function gotDetections(results) {
             detections = results;
-
-            // Log occasionally for debugging
-            if (results.length > 0 && frameCount % 30 === 0) {
-                console.log('Detected:', results.map(d => `${d.label} (${Math.round(d.confidence * 100)}%)`));
+            if (results.length > 0 && frameCount % 20 === 0) {
+                console.log('👁️ AI BOSS DETECTS:', results.map(d => d.label === 'person' ? 'ART WORKER' : `ART MATERIAL (${d.label})`));
             }
         }
 
-        // Handle window resize
         function windowResized() {
             resizeCanvas(windowWidth, windowHeight);
         }
 
-        // Register p5 functions
         window.setup = setup;
         window.draw = draw;
         window.windowResized = windowResized;
 
-        // Prevent pinch zoom and touch gestures
         window.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
         window.addEventListener('gesturestart', e => e.preventDefault());
     </script>
