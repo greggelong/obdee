@@ -174,7 +174,12 @@
             // Create new video capture with constraints
             let constraints = {
                 video: {
-                    facingMode: facingMode
+                    facingMode: facingMode,
+                    // Lower resolution = faster processing
+                    width: { ideal: 480 },     // Was likely 1280+ before
+                    height: { ideal: 360 },     // 480x360 is much lighter
+                    // Limit frame rate to reduce processing load
+                    frameRate: { ideal: 15 }    // Was 30/60fps before
                 },
                 audio: false
             };
