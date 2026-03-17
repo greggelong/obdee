@@ -1,0 +1,222 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>p5.js + ml5: Rear Camera Object Detection (Debug View)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@1/dist/ml5.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: black; }
+        canvas { display: block; }
+        .status-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 16px;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border-left: 4px solid #0f0;
+            z-index: 100;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            max-width: 60%;
+        }
+        .status-panel.error {
+            border-left-color: #f00;
+            color: #fcc;
+        }
+        .status-panel.warn {
+            border-left-color: #ff0;
+            color: #ffc;
+        }
+        .counter {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-family: monospace;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 18px;
+            z-index: 100;
+            backdrop-filter: blur(2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="status-panel" id="statusPanel">🚀 Initializing...</div>
+    <div class="counter" id="detectionCounter">Objects: 0</div>
+
+    <script>
+        // --- p5 sketch with enhanced debugging ---
+        let video;
+        let detector;
+        let detections = [];
+        let videoWidth = 0, videoHeight = 0;
+        let scale = 1, offsetX = 0, offsetY = 0;
+        let modelLoaded = false;
+        let detectionAttempts = 0;
+        let lastDetectionTime = 0;
+        let noDetectionMessage = '';
+
+        const statusEl = document.getElementById('statusPanel');
+        const counterEl = document.getElementById('detectionCounter');
+
+        function setStatus(msg, type = 'info') {
+            statusEl.textContent = msg;
+            statusEl.className = 'status-panel ' + (type === 'error' ? 'error' : (type === 'warn' ? 'warn' : ''));
+        }
+
+        async function setup() {
+            createCanvas(windowWidth, windowHeight);
+            pixelDensity(1);
+
+            // Request rear camera
+            try {
+                video = createCapture({
+                    video: { facingMode: { exact: "environment" } },
+                    audio: false
+                }, () => setStatus('✅ Camera started (rear)', 'info'));
+            } catch (err) {
+                console.warn('Rear camera not available, using default', err);
+                video = createCapture({ video: true, audio: false }, 
+                    () => setStatus('⚠️ Using default camera (rear may not exist)', 'warn'));
+            }
+            video.hide();
+
+            // Wait for video metadata
+            await new Promise((resolve) => {
+                if (video.elt.videoWidth > 0) {
+                    videoWidth = video.elt.videoWidth;
+                    videoHeight = video.elt.videoHeight;
+                    resolve();
+                } else {
+                    video.elt.addEventListener('loadedmetadata', () => {
+                        videoWidth = video.elt.videoWidth;
+                        videoHeight = video.elt.videoHeight;
+                        resolve();
+                    });
+                }
+            });
+
+            setStatus(`📷 Camera: ${videoWidth}x${videoHeight}`, 'info');
+            updateVideoMapping();
+
+            // Load model
+            try {
+                setStatus('🤖 Loading model (cocossd)...', 'info');
+                detector = await ml5.objectDetection('cocossd');
+                modelLoaded = true;
+                setStatus('🤖 Model ready – detecting', 'info');
+            } catch (modelErr) {
+                setStatus('❌ Model failed to load', 'error');
+                console.error('Model error:', modelErr);
+                return;
+            }
+
+            // Start continuous detection
+            if (detector) {
+                detector.detectStart(video, gotDetections);
+            }
+        }
+
+        function updateVideoMapping() {
+            if (videoWidth === 0 || videoHeight === 0 || width === 0 || height === 0) return;
+            let scaleW = width / videoWidth;
+            let scaleH = height / videoHeight;
+            scale = Math.min(scaleW, scaleH);
+            offsetX = (width - videoWidth * scale) / 2;
+            offsetY = (height - videoHeight * scale) / 2;
+        }
+
+        function draw() {
+            background(0);
+
+            // Draw video if ready
+            if (video && videoWidth > 0) {
+                updateVideoMapping();  // handles window resize
+                image(video, offsetX, offsetY, videoWidth * scale, videoHeight * scale);
+
+                // Draw detections
+                push();
+                strokeWeight(3);
+                textSize(18);
+                textFont('monospace');
+                for (let d of detections) {
+                    let dx = d.x * scale + offsetX;
+                    let dy = d.y * scale + offsetY;
+                    let dw = d.width * scale;
+                    let dh = d.height * scale;
+
+                    // bounding box
+                    stroke(0, 255, 0);
+                    noFill();
+                    rect(dx, dy, dw, dh);
+
+                    // label background
+                    let label = `${d.label} ${Math.round(d.confidence * 100)}%`;
+                    textSize(18);
+                    let tw = textWidth(label) + 10;
+                    fill(0, 255, 0);
+                    rect(dx, dy - 24, tw, 22);
+                    fill(0);
+                    text(label, dx + 5, dy - 8);
+                }
+                pop();
+
+                // Update counter and show if no objects
+                counterEl.textContent = `Objects: ${detections.length}`;
+                if (detections.length === 0 && modelLoaded && millis() > 3000) {
+                    if (frameCount % 30 === 0) { // every ~0.5 sec
+                        noDetectionMessage = '🔍 No objects yet – try pointing at a person, book, or bottle';
+                    }
+                    fill(255, 200, 0);
+                    noStroke();
+                    textAlign(CENTER);
+                    textSize(20);
+                    text(noDetectionMessage, width/2, height - 50);
+                } else {
+                    noDetectionMessage = '';
+                }
+            } else {
+                // Waiting for camera
+                fill(255);
+                noStroke();
+                textAlign(CENTER, CENTER);
+                text('⏳ Starting camera...', width/2, height/2);
+            }
+        }
+
+        function gotDetections(results) {
+            detections = results;
+            lastDetectionTime = millis();
+
+            // Log to console for debugging (limit to avoid spam)
+            if (results.length > 0) {
+                console.log('Detected:', results.map(d => `${d.label} (${Math.round(d.confidence*100)}%)`));
+            } else {
+                // optionally log every 30 frames that no detections
+                if (frameCount % 60 === 0) console.log('No objects in this frame');
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+
+        window.setup = setup;
+        window.draw = draw;
+        window.windowResized = windowResized;
+
+        // Prevent pinch zoom
+        window.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+        window.addEventListener('gesturestart', e => e.preventDefault());
+    </script>
+</body>
+</html>
